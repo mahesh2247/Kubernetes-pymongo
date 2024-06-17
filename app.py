@@ -1,26 +1,17 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
-from pymongo import MongoClient
-import socket
-
+import os
 
 app = Flask(__name__)
-app.config["MONGO_URI"] = "mongodb://localhost:27017/dev"
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/dev")
 mongo = PyMongo(app)
-# db = mongo.db
-# client = MongoClient(app.config["MONGO_URI"])
-# print(client)
-# names = client.list_database_names()
-# print(jsonify(names))
+
 @app.route("/")
 def index():
-    # hostname = socket.gethostname()
-    names = client.list_database_names()
-    return jsonify(
-        databases=names
-        # message="Welcome to Tasks app! I am running inside {} pod!".format(hostname)
-    )
+    names = mongo.cx.list_database_names()
+    return jsonify(databases=names)
+
 @app.route("/tasks")
 def get_all_tasks():
     try:
@@ -36,13 +27,13 @@ def get_all_tasks():
         return jsonify(tasks=task_list)
     except Exception as e:
         return jsonify(error=str(e)), 500
+
 @app.route("/task", methods=["POST"])
 def create_task():
     data = request.get_json(force=True)
     mongo.db.task.insert_one({"task": data["task"]})
-    return jsonify(
-        message="Task saved successfully!"
-    )
+    return jsonify(message="Task saved successfully!")
+
 @app.route("/task/<id>", methods=["PUT"])
 def update_task(id):
     data = request.get_json(force=True)["task"]
@@ -51,9 +42,8 @@ def update_task(id):
         message = "Task updated successfully!"
     else:
         message = "No Task found!"
-    return jsonify(
-        message=message
-    )
+    return jsonify(message=message)
+
 @app.route("/task/<id>", methods=["DELETE"])
 def delete_task(id):
     response = mongo.db.task.delete_one({"_id": ObjectId(id)})
@@ -61,14 +51,12 @@ def delete_task(id):
         message = "Task deleted successfully!"
     else:
         message = "No Task found!"
-    return jsonify(
-        message=message
-    )
+    return jsonify(message=message)
+
 @app.route("/tasks/delete", methods=["POST"])
 def delete_all_tasks():
     mongo.db.task.remove()
-    return jsonify(
-        message="All Tasks deleted!"
-    )
+    return jsonify(message="All Tasks deleted!")
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
